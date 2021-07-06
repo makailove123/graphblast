@@ -1,7 +1,8 @@
 # CMakeLists.txt for unittest
  
 # required cmakeversion                                                                                                                                                                                   
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.0)
+set(CMAKE_VERBOSE_MAKEFILE on)
 # packages                                                                                                                                                                                                 
 find_package(CUDA)
 find_package(Boost COMPONENTS program_options REQUIRED)
@@ -19,16 +20,16 @@ set( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/../bin )
 #set( CUDA_CURAND_LIBRARY "$ENV{CUDA_HOME}/lib64/libcurand.so" )
 #set( CUDA_CUBLAS_LIBRARY "$ENV{CUDA_HOME}/lib64/libcublas.so" )
 set( CUDA_CUSPARSE_LIBRARY "$ENV{CUDA_HOME}/lib64/libcusparse.so" )
-#FILE( GLOB_RECURSE PROJ_SOURCES graphblas/*.cu ../graphblas/*.cpp )
+FILE( GLOB_RECURSE PROJ_SOURCES graphblas/*.cu ../graphblas/*.cpp )
 #FILE( GLOB_RECURSE PROJ_LIBRARIES ext/cublas1.1/*.cu )
 FILE( GLOB_RECURSE PROJ_HEADERS graphblas/*.hpp)
 # nvcc flags
-set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -arch=sm_35 -lineinfo -O3 -use_fast_math -Xptxas=-v")
+set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -arch=sm_35 -lineinfo -O3 -use_fast_math -Xptxas=-v -save-temps")
 #set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};-fpermissive;-arch=sm_35;-lineinfo;-Xptxas=-v;-dlcm=ca;-maxrregcount=64)
 #set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};-gencode arch=compute_20,code=sm_21)
 # needed for cudamalloc
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
-set(CMAKE_CXX_FLAGS "-fpermissive -g -m64 -std=c++11" )
+set(CMAKE_CXX_FLAGS "-fpermissive -g -m64 -std=c++14" )
 #set(CMAKE_CXX_FLAGS "-fpermissive -pg -m64 -std=c++11" )
 #set(CMAKE_CXX_FLAGS "-fpermissive -g -m64 -std=c++11 -H" )
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
@@ -50,7 +51,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 message( ${Boost_INCLUDE_DIRS} )
 message( ${Boost_LIBRARY_DIRS} )
 include_directories( ${PROJ_INCLUDES} ${Boost_INCLUDE_DIRS} )
-cuda_add_library( graphblas ${PROJ_LIBRARIES} ${PROJ_HEADERS} )
+cuda_add_library( graphblas ${PROJ_SOURCES} ${mgpu_SRC_FILES} ${PROJ_LIBRARIES} ${PROJ_HEADERS} )
 #cuda_add_executable( gmmio         "test/gmmio.cu" ) x
 #cuda_add_executable( gutil        "test/gutil.cu" ) x
 #cuda_add_executable( gspmspv       "test/gspmspv.cu"       ${mgpu_SRC_FILES} )
@@ -100,7 +101,7 @@ target_link_libraries( greduce       graphblas ${Boost_LIBRARIES} )
 target_link_libraries( gewisemult    graphblas ${Boost_LIBRARIES} )
 target_link_libraries( gewiseadd     graphblas ${Boost_LIBRARIES} )
 target_link_libraries( gbfs          graphblas ${Boost_LIBRARIES} )
-target_link_libraries( gsssp         graphblas ${Boost_LIBRARIES} )
+target_link_libraries( gsssp         ${Boost_LIBRARIES} )
 target_link_libraries( glgc          graphblas ${Boost_LIBRARIES} )
 target_link_libraries( ggc           graphblas ${CUDA_CUSPARSE_LIBRARY} ${Boost_LIBRARIES} )
 target_link_libraries( gmis          graphblas ${Boost_LIBRARIES} )
@@ -119,3 +120,11 @@ target_link_libraries( gspgemm graphblas ${CUDA_CUSPARSE_LIBRARY} ${Boost_LIBRAR
 #target_link_libraries( gbspmm graphblas ${CUDA_CUSPARSE_LIBRARY} ${Boost_LIBRARIES} )
 #target_link_libraries( gbspgemm graphblas ${CUDA_CUSPARSE_LIBRARY} ${Boost_LIBRARIES})
 
+
+find_package(Torch REQUIRED)
+message(${TORCH_FOUND})
+message("${TORCH_LIBRARIES}")
+message(${TORCH_CXX_FLAGS})
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
+add_executable(pysssp "tensor/pysssp.cpp" )
+target_link_libraries(pysssp graphblas ${TORCH_LIBRARIES} ${Boost_LIBRARIES} )

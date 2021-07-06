@@ -1,0 +1,54 @@
+#ifndef GRB_USE_CUDA
+#define GRB_USE_CUDA
+#endif
+#define private public
+
+#include <iostream>
+#include <vector>
+
+#include <boost/program_options.hpp>
+#include "graphblas/graphblas.hpp"
+#include "graphblas/algorithm/sssp.hpp"
+#include "graphblas/algorithm/common.hpp"
+#include "graphblas/algorithm/test_sssp.hpp"
+
+#include "graphblas/wrapper/sssp.hpp"
+
+namespace graphblas {
+namespace wrapper {
+
+int sssp(int nrows, int ncols, int nvals, int* row_ptr, int* col_ind, float* vals, int source, std::vector<float>& result, int argc, char** argv)
+{
+  result.resize(nrows);
+  setEnv("GRB_SPARSE_MATRIX_FORMAT", backend::GrB_SPARSE_MATRIX_CSRONLY);
+  po::variables_map vm;
+  parseArgs(argc, argv, &vm);
+  Descriptor desc;
+  CHECK(desc.loadArgs(vm));
+  Matrix<float> a(nrows, ncols);
+  CHECK(a.build(row_ptr, col_ind, vals, nvals));
+  std::cout << "********************************" << std::endl;
+  a.print(1);
+  std::cout << "********************************" << std::endl;
+  Vector<float> v(nrows);
+  algorithm::sssp(&v, &a, source, &desc);
+  CHECK(v.extractTuples(&result, &nrows));
+  return GrB_SUCCESS;
+}
+
+int sssp_cpu(int nrows, int ncols, int nvals, int* row_ptr, int* col_ind, float* vals, int source, std::vector<float>& result, int depth, int& max_depth)
+{
+  result.resize(nrows);
+  float* h_sssp_cpu = (float*)malloc(sizeof(float) * nrows);
+  if (h_sssp_cpu == NULL)
+    return GrB_NULL_POINTER;
+  max_depth = algorithm::SimpleReferenceSssp<T>(nrows, row_ptr, col_ind, vals, h_sssp_cpu, source, depth);
+  for (int i = 0; i < nrows; i ++)
+    result[i] = h_sssp_cpu[i];
+  free(h_sssp_cpu);
+  h_sssp_cpu = NULL;
+  return GrB_SUCCESS;
+}
+
+}
+}
